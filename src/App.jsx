@@ -830,7 +830,7 @@ export default function App() {
       const url = URL.createObjectURL(content);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "arc_workspace_export.zip";
+      a.download = buildExportName(sub1Name, sub2Name);
       a.click();
     } catch (err) {
       setError("Failed to export workspace: " + err.message);
@@ -862,6 +862,20 @@ export default function App() {
         if (!isCorrect && status === false) result.push(taskId);
     });
     return result;
+  };
+
+  const buildExportName = (s1, s2) => {
+    const slug = (name) => {
+      if (!name) return null;
+      return name
+        .replace(/\.json$/i, '')           // drop extension
+        .replace(/[^a-zA-Z0-9_\-]/g, '_') // sanitize
+        .replace(/_+/g, '_')               // collapse runs
+        .replace(/^_|_$/g, '')             // trim edges
+        .slice(0, 40);                     // cap length
+    };
+    const parts = [slug(s1), slug(s2)].filter(Boolean);
+    return parts.length ? `arc_${parts.join('_vs_')}.zip` : 'arc_workspace_export.zip';
   };
 
   const formatIdsAsKaggleArray = (ids) => {
