@@ -229,35 +229,6 @@ export default function App() {
 
         const sol = await fetchFile('arc-agi_evaluation_solutions.json');
         if (sol) setSolutions(sol);
-
-        const samp = await fetchFile('sample_submission.json');
-        if (samp) {
-          setSubmission1(samp);
-          setSub1Name('sample_submission.json');
-        }
-
-        const comp = await fetchFile('complexity_analysis_20260405_035004.json');
-        if (comp) {
-          let puzzlesArray = [];
-          if (Array.isArray(comp)) puzzlesArray = comp;
-          else if (comp.puzzles && Array.isArray(comp.puzzles)) puzzlesArray = comp.puzzles;
-          else {
-             const arrKey = Object.keys(comp).find(k =>
-                Array.isArray(comp[k]) && comp[k].length > 0 && comp[k][0] && typeof comp[k][0] === 'object' && 'id' in comp[k][0]
-             );
-             if (arrKey) puzzlesArray = comp[arrKey];
-          }
-
-          const compMap = {};
-          puzzlesArray.forEach(p => {
-             if (p.id) {
-                 const levelKey = Object.keys(p).find(k => k.startsWith('level'));
-                 let lvl = String(levelKey ? p[levelKey] : (p.complexity ?? 'Uncategorized'));
-                 compMap[p.id] = { level: lvl, ...p };
-             }
-          });
-          setComplexityData(compMap);
-        }
       } catch (err) {
         console.log("No local default files found to load.");
       }
