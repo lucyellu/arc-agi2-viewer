@@ -230,6 +230,12 @@ export default function App() {
         const sol = await fetchFile('arc-agi_evaluation_solutions.json');
         if (sol) setSolutions(sol);
 
+        const samp = await fetchFile('sample_submission.json');
+        if (samp) {
+          setSubmission1(samp);
+          setSub1Name('sample_submission.json');
+        }
+
         const comp = await fetchFile('complexity_analysis_20260405_035004.json');
         if (comp) {
           let puzzlesArray = [];
