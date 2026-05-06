@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Windows shortcuts — paths are machine-specific.
+*.lnk
