@@ -1,6 +1,6 @@
 # ARC AGI-2 Viewer
 
-**[Try it live →](https://deft-pudding-519281.netlify.app/)**
+**[Try it live →](https://arc-agi2-viewer.netlify.app/)**
 
 A local viewer for [ARC-AGI-2](https://arcprize.org/) puzzles. Load challenges, solutions, and model submissions to visually inspect grids, compare attempts side-by-side, and see accuracy scores broken down by complexity level.
 
