@@ -1597,28 +1597,64 @@ export default function App() {
   );
 }
 
-// Reusable component to render the grid similarity metrics, size changes, and color differences
+// Reusable component to render the grid similarity metrics, size changes, and color differences.
+//
+// Three percentage types are rendered side by side throughout the viewer and they MEAN DIFFERENT
+// THINGS — a high number is only "good" for one of them:
+//
+//   attemptVsSol   (Attempt → Output)   target: 100%  (only 100% counts as correct)
+//   attemptVsChal  (Attempt → Input)    target: matches the baseline (Input → Output) value;
+//                                       100% here = ECHO failure (the model just copied input)
+//   chalVsSol / trainInVsOut            informational baseline — intrinsic puzzle distance
+//
+// The label/target/flag annotations below make these distinctions visually obvious.
 function SimilarityMetrics({ stats, baselineStats, type }) {
   if (!stats) return null;
 
+  // attemptVsSol: trending change vs baseline (already meaningful — closer to 100%).
+  // attemptVsChal: convergence to baseline matters MORE than 100% — flag echoes loudly.
+  // baselines: just labeled.
   let improvement = null;
   if (baselineStats && type === 'attemptVsSol') {
      const simChange = stats.similarityPct - baselineStats.similarityPct;
      if (simChange > 0.1) {
-        improvement = <span className="text-green-400 flex items-center text-[10px] font-medium"><TrendingUp className="w-3 h-3 mr-0.5"/> {simChange.toFixed(1)}% better</span>;
+        improvement = <span className="text-green-400 flex items-center text-[10px] font-medium"><TrendingUp className="w-3 h-3 mr-0.5"/> {simChange.toFixed(1)}% closer to 100%</span>;
      } else if (simChange < -0.1) {
-        improvement = <span className="text-red-400 flex items-center text-[10px] font-medium"><TrendingDown className="w-3 h-3 mr-0.5"/> {Math.abs(simChange).toFixed(1)}% worse</span>;
+        improvement = <span className="text-red-400 flex items-center text-[10px] font-medium"><TrendingDown className="w-3 h-3 mr-0.5"/> {Math.abs(simChange).toFixed(1)}% farther from 100%</span>;
      } else {
         improvement = <span className="text-neutral-500 flex items-center text-[10px] font-medium"><Minus className="w-3 h-3 mr-0.5"/> No change</span>;
      }
+  } else if (type === 'attemptVsChal') {
+     // For attempt-vs-input: 100% is BAD (echo), divergence from input is GOOD when it matches the puzzle's expected change.
+     if (stats.similarityPct > 95) {
+        improvement = <span className="text-red-400 flex items-center text-[10px] font-bold tracking-wide uppercase" title="Attempt nearly identical to the input — likely just echoed it instead of transforming">ECHO RISK</span>;
+     } else if (baselineStats) {
+        // baselineStats here = chal vs sol; ideal is for attempt-vs-chal to MATCH that.
+        const targetDist = Math.abs(stats.similarityPct - baselineStats.similarityPct);
+        if (targetDist < 1) {
+           improvement = <span className="text-green-400 flex items-center text-[10px] font-medium" title="Attempt's distance from input matches the expected transformation distance">on-target Δ</span>;
+        } else {
+           improvement = <span className="text-neutral-400 flex items-center text-[10px] font-medium" title="Compare to baseline % — for a correct attempt these should match">Δ {targetDist.toFixed(1)}% off baseline</span>;
+        }
+     }
   } else if (type === 'chalVsSol' || type === 'trainInVsOut') {
-     improvement = <span className="text-blue-400 flex items-center text-[10px] font-medium tracking-wide uppercase">Baseline Sim</span>;
+     improvement = <span className="text-blue-400 flex items-center text-[10px] font-medium tracking-wide uppercase" title="Intrinsic distance between input and output — informational baseline, not a goal">baseline</span>;
   }
 
-  let labelText = "Attempt vs Sol:";
-  if (type === 'chalVsSol') labelText = "Chal vs Sol:";
-  else if (type === 'attemptVsChal') labelText = "Attempt vs Chal:";
-  else if (type === 'trainInVsOut') labelText = "Input vs Output:";
+  // Direction-arrow labels make it immediately clear what the % refers to. Each label includes
+  // a short target hint so a reader can't misread "99% similarity" as "99% correct".
+  let labelText = "Attempt → Output:";
+  let targetHint = <span className="text-[9px] text-neutral-500 ml-1" title="Only 100% counts as a correct submission">(target 100%)</span>;
+  if (type === 'chalVsSol') {
+    labelText = "Input → Output:";
+    targetHint = <span className="text-[9px] text-neutral-500 ml-1" title="Baseline puzzle distance — informational">(baseline)</span>;
+  } else if (type === 'attemptVsChal') {
+    labelText = "Attempt → Input:";
+    targetHint = <span className="text-[9px] text-neutral-500 ml-1" title="A correct attempt diverges from the input by exactly the puzzle's transformation amount; 100% here means the attempt is just the input (echo failure)">(target ≈ baseline, NOT 100%)</span>;
+  } else if (type === 'trainInVsOut') {
+    labelText = "Input → Output:";
+    targetHint = <span className="text-[9px] text-neutral-500 ml-1" title="Train pair — shows intrinsic transformation magnitude">(train baseline)</span>;
+  }
 
   const isPerfect = stats.similarityPct === 100;
 
@@ -1629,8 +1665,9 @@ function SimilarityMetrics({ stats, baselineStats, type }) {
   return (
     <div className="flex flex-col gap-1.5 bg-neutral-950/60 p-2 rounded-md border border-neutral-800/80 w-fit min-w-[160px] shadow-sm">
        <div className="flex justify-between items-center gap-4">
-          <span className="text-[10px] text-neutral-400 flex items-baseline gap-1">
-            {labelText} <b className={isPerfect ? "text-green-400" : "text-white"}>{stats.similarityPct.toFixed(1)}%</b>
+          <span className="text-[10px] text-neutral-400 flex items-baseline gap-1 flex-wrap">
+            {labelText} <b className={isPerfect && type === 'attemptVsSol' ? "text-green-400" : (isPerfect && type === 'attemptVsChal' ? "text-red-400" : "text-white")}>{stats.similarityPct.toFixed(1)}%</b>
+            {targetHint}
           </span>
           {improvement}
        </div>
@@ -1779,7 +1816,7 @@ function TaskView({ taskId, challenges, solutions, sub1, sub2, sub1Name, sub2Nam
                               />
                               <div className="flex flex-col gap-1.5 mt-1.5">
                                  <SimilarityMetrics stats={s1a1Stats} baselineStats={inputStats} type="attemptVsSol" />
-                                 <SimilarityMetrics stats={s1a1InputStats} type="attemptVsChal" />
+                                 <SimilarityMetrics stats={s1a1InputStats} baselineStats={inputStats} type="attemptVsChal" />
                               </div>
                             </div>
                           )}
@@ -1794,7 +1831,7 @@ function TaskView({ taskId, challenges, solutions, sub1, sub2, sub1Name, sub2Nam
                               />
                               <div className="flex flex-col gap-1.5 mt-1.5">
                                  <SimilarityMetrics stats={s1a2Stats} baselineStats={inputStats} type="attemptVsSol" />
-                                 <SimilarityMetrics stats={s1a2InputStats} type="attemptVsChal" />
+                                 <SimilarityMetrics stats={s1a2InputStats} baselineStats={inputStats} type="attemptVsChal" />
                               </div>
                             </div>
                           )}
@@ -1822,7 +1859,7 @@ function TaskView({ taskId, challenges, solutions, sub1, sub2, sub1Name, sub2Nam
                               />
                               <div className="flex flex-col gap-1.5 mt-1.5">
                                  <SimilarityMetrics stats={s2a1Stats} baselineStats={inputStats} type="attemptVsSol" />
-                                 <SimilarityMetrics stats={s2a1InputStats} type="attemptVsChal" />
+                                 <SimilarityMetrics stats={s2a1InputStats} baselineStats={inputStats} type="attemptVsChal" />
                               </div>
                             </div>
                           )}
@@ -1837,7 +1874,7 @@ function TaskView({ taskId, challenges, solutions, sub1, sub2, sub1Name, sub2Nam
                               />
                               <div className="flex flex-col gap-1.5 mt-1.5">
                                  <SimilarityMetrics stats={s2a2Stats} baselineStats={inputStats} type="attemptVsSol" />
-                                 <SimilarityMetrics stats={s2a2InputStats} type="attemptVsChal" />
+                                 <SimilarityMetrics stats={s2a2InputStats} baselineStats={inputStats} type="attemptVsChal" />
                               </div>
                             </div>
                           )}
