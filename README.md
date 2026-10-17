@@ -4,7 +4,7 @@
 
 A local viewer for [ARC-AGI-2](https://arcprize.org/) puzzles. Load challenges, solutions, and model submissions to visually inspect grids, compare attempts side-by-side, and see accuracy scores broken down by complexity level.
 
-![ARC AGI-2 Viewer]
+![ARC AGI-2 Viewer showing a task's training pairs and the score summary](docs/screenshot.png)
 
 ## What it does
 
